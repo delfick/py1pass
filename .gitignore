@@ -1,0 +1,6 @@
+.tox/
+dist/
+build/
+py1pass.egg-info/
+__pycache__/
+.dmypy.json

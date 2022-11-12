@@ -1,0 +1,18 @@
+[tool.black]
+line-length = 100
+include = '\.py$'
+exclude = '''
+/(
+     \.git
+   | \.tox
+   | dist
+   | tools
+)/
+'''
+
+[tool.flake8]
+ignore = 'D100,D101,D102,D104,D106,W391,W503'
+max-line-length = 120
+
+[tool.isort]
+profile = 'black'

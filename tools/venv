@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+
+import glob
+import os
+import runpy
+import subprocess
+import sys
+from pathlib import Path
+
+manager = runpy.run_path(str(Path(__file__).parent / "bootstrap_venvstarter.py"))["manager"]
+
+
+def run(venv_location: Path, args: list[str]) -> None | str | list[str]:
+    devtools_location = Path(__file__).parent / "devtools.py"
+    devtools = runpy.run_path(str(devtools_location))["app"]
+
+    if args and args[0] in devtools.commands:
+        return ["python", str(devtools_location)]
+
+    return "py1pass"
+
+
+manager = manager(run).named(".python")
+manager.add_requirements_file("{here}", "requirements.dev.txt")
+manager.add_requirements_file("{here}", "requirements.docs.txt")
+manager.add_local_dep(
+    "{here}",
+    "..",
+    version_file=(
+        "py1pass",
+        "version.py",
+    ),
+    name="py1pass=={version}",
+    with_tests=True,
+)
+manager.run()

@@ -1,0 +1,71 @@
+---
+
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+  types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      - name: Install deps
+        env:
+          VENVSTARTER_ONLY_MAKE_VENV: "1"
+        run: ./tools/venv
+
+      - name: Ensure mypy is happy
+        run: ./types
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      - name: Install deps
+        env:
+          VENVSTARTER_ONLY_MAKE_VENV: "1"
+        run: ./tools/venv
+
+      - name: Ensure linter is happy
+        run: ./lint
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      - name: Install deps
+        env:
+          VENVSTARTER_ONLY_MAKE_VENV: "1"
+        run: ./tools/venv
+
+      - name: Ensure code is formatted
+        run: |
+          ./format
+
+          # Complain if there were changes
+          if [[ ! -z "$(git status --porcelain)" ]]; then
+            echo "=========================================="
+            echo "Found changes!"
+            echo "Please run ./format before committing code"
+            echo "=========================================="
+            git diff
+            exit 1
+          fi
