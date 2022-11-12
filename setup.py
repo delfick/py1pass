@@ -8,7 +8,7 @@ setup(
     name="py1pass",
     version=VERSION,
     # Make sure you change VERSION value when you change install_requires
-    install_requires=["strcs==0.2.0", "typer==0.7.0"],
+    install_requires=["strcs==0.2.0", "typer==0.7.0", "sh==1.14.3"],
     extras_require={
         "tests": ["noseOfYeti==2.3.1", "pytest==7.1.2"],
     },
