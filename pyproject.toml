@@ -1,18 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "py1pass"
+dynamic = ["version"]
+readme = "README.rst"
+license = ""
+dependencies = [
+    "sh==1.14.3",
+    "strcs==0.2.0",
+    "typer==0.7.0",
+]
+
+[project.optional-dependencies]
+tests = [
+    "noseOfYeti[black]==2.4.2",
+    "pytest==7.2.0",
+]
+
+[project.scripts]
+py1pass = "py1pass.executor:app"
+
+[tool.hatch.version]
+path = "py1pass/version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/py1pass",
+]
+
 [tool.black]
 line-length = 100
-include = '\.py$'
+include = '(\.py|^venv)$'
 exclude = '''
 /(
      \.git
    | \.tox
    | dist
-   | tools
+   | tools/\.python
+   | docs/_build
+   | build
 )/
 '''
 
-[tool.flake8]
-ignore = 'D100,D101,D102,D104,D106,W391,W503'
-max-line-length = 120
-
 [tool.isort]
-profile = 'black'
+profile = "black"
+skip_glob = [
+   ".git/*",
+   ".tox/*",
+   "dist/*",
+   "tools/.python/*",
+   "tools/deps/*",
+   "docs/_build/*",
+   "build/*",
+]
+
+[tool.mypy]
+plugins = 'noseOfYeti.plugins.mypy'
+ignore_missing_imports = true
+show_column_numbers = true
+allow_redefinition = true

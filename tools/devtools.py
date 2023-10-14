@@ -1,26 +1,38 @@
-import glob
-import http.server
 import inspect
 import os
+import platform
+import shlex
 import shutil
-import socket
-import socketserver
 import sys
-import threading
-import time
 import typing as tp
-import webbrowser
 from pathlib import Path
 
 here = Path(__file__).parent
 
+if platform.system() == "Windows":
+    import mslex
 
-@tp.runtime_checkable
+    shlex = mslex  # noqa
+
+
 class Command(tp.Protocol):
     __is_command__: bool
 
     def __call__(self, bin_dir: Path, args: list[str]) -> None:
         ...
+
+
+def command(func: tp.Callable) -> tp.Callable:
+    tp.cast(Command, func).__is_command__ = True
+    return func
+
+
+def run(*args: str | Path, _env: None | dict[str, str] = None) -> None:
+    cmd = " ".join(shlex.quote(str(part)) for part in args)
+    print(f"Running '{cmd}'")
+    ret = os.system(cmd)
+    if ret != 0:
+        sys.exit(1)
 
 
 class App:
@@ -39,113 +51,75 @@ class App:
                 ), f"Expected '{name}' to have correct signature, have {inspect.signature(val)} instead of {compare}"
                 self.commands[name] = val
 
-    @staticmethod
-    def command(func: tp.Callable) -> tp.Callable:
-        tp.cast(Command, func).__is_command__ = True
-        return func
-
-    def __call__(self, args: list[str], *, venv_location: None | Path = None) -> None:
-        if venv_location is None:
-            venv_location = Path(sys.executable) / ".." / ".."
-
-        import sh
+    def __call__(self, args: list[str]) -> None:
+        bin_dir = Path(sys.executable).parent
 
         if args and args[0] in self.commands:
             os.chdir(here.parent)
-            try:
-                self.commands[args[0]](venv_location / "bin", args[1:])
-            except sh.ErrorReturnCode as error:
-                sys.exit(error.exit_code)
+            self.commands[args[0]](bin_dir, args[1:])
             return
 
         sys.exit(f"Unknown command:\nAvailable: {sorted(self.commands)}\nWanted: {args}")
 
     @command
     def format(self, bin_dir: Path, args: list[str]) -> None:
-        import sh
-
-        files = ["py1pass", "tools/venv", *glob.glob("tools/*.py"), "setup.py"]
-        sh.Command(bin_dir / "black")(*files, *args, _fg=True)
-        sh.Command(bin_dir / "isort")(*files, *args, _fg=True)
+        if not args:
+            args = [".", *args]
+        run(bin_dir / "black", *args)
+        run(bin_dir / "isort", *args)
 
     @command
     def lint(self, bin_dir: Path, args: list[str]) -> None:
-        import sh
-
-        sh.Command(bin_dir / "pylama")(*args, _fg=True)
-
-    @command
-    def types(self, bin_dir: Path, args: list[str]) -> None:
-        import sh
-
-        if args and args[0] == "restart":
-            args.pop(0)
-            sh.Command(bin_dir / "dmypy")("stop", _fg=True)
-
-        args = ["run", *args]
-        if "--" not in args:
-            args.extend(["--", "."])
-
-        sh.Command(bin_dir / "dmypy")(*args, _fg=True)
+        run(bin_dir / "pylama", *args)
 
     @command
     def tests(self, bin_dir: Path, args: list[str]) -> None:
-        import sh
-
-        sh.Command(bin_dir / "pytest")(*args, _fg=True)
+        if "-q" not in args:
+            args = ["-q", *args]
+        run(bin_dir / "pytest", *args, _env={"NOSE_OF_YETI_BLACK_COMPAT": "false"})
 
     @command
     def tox(self, bin_dir: Path, args: list[str]) -> None:
-        import sh
+        run(bin_dir / "tox", *args)
 
-        sh.Command(bin_dir / "tox")(*args, _fg=True)
+    @command
+    def types(self, bin_dir: Path, args: list[str]) -> None:
+        if args and args[0] == "restart":
+            args.pop(0)
+            run(bin_dir / "dmypy", "stop")
+
+        args: list[str | Path] = ["run", *args]
+        if "--" not in args:
+            args.extend(["--", "."])
+
+        if "--show-column-numbers" not in args:
+            args.append("--show-column-numbers")
+
+        if "--config" not in args:
+            args.append("--config-file")
+            args.append(Path("pyproject.toml").absolute())
+
+        run(bin_dir / "dmypy", *args)
 
     @command
     def docs(self, bin_dir: Path, args: list[str]) -> None:
-        import sh
-
-        do_view: bool = False
         docs_path = here / ".." / "docs"
+        build_path = docs_path / "_build"
+        command: list[Path | str] = [bin_dir / "sphinx-build"]
+
+        other_args: list[str] = []
         for arg in args:
-            match arg:
-                case "fresh":
-                    build_path = docs_path / "_build"
-                    if build_path.exists():
-                        shutil.rmtree(build_path)
-                case "view":
-                    do_view = True
+            if arg == "fresh":
+                if build_path.exists():
+                    shutil.rmtree(build_path)
+            elif arg == "view":
+                command = [bin_dir / "sphinx-autobuild", "--port", "9876"]
+            else:
+                other_args.append(arg)
 
         os.chdir(docs_path)
-        sh.Command(bin_dir / "sphinx-build")(
-            "-b", "html", ".", "_build/html", "-d", "_build/doctrees", _fg=True
-        )
 
-        if do_view:
-
-            with socket.socket() as s:
-                s.bind(("", 0))
-                port = s.getsockname()[1]
-
-            address = f"http://127.0.0.1:{port}"
-            results = docs_path / "_build" / "html"
-
-            class Handler(http.server.SimpleHTTPRequestHandler):
-                def __init__(self, *args, **kwargs):
-                    super().__init__(*args, directory=str(results), **kwargs)
-
-            def open_browser():
-                time.sleep(0.2)
-                webbrowser.open(address)
-
-            with socketserver.TCPServer(("", port), Handler) as httpd:
-                print(f"Serving docs at {address}")
-                thread = threading.Thread(target=open_browser)
-                thread.daemon = True
-                thread.start()
-                try:
-                    httpd.serve_forever()
-                except KeyboardInterrupt:
-                    pass
+        run(*command, ".", "_build/html", "-b", "html", "-d", "_build/doctrees", *other_args)
 
 
 app = App()
