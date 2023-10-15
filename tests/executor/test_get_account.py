@@ -4,7 +4,7 @@ import typing as tp
 import pytest
 import typer
 
-from py1pass.config import accounts as accnts
+from py1pass import accounts as accnts
 from py1pass.tests import FakeCLI, OPConfigHelper
 
 

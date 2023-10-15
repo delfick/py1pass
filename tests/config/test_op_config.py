@@ -1,8 +1,8 @@
 import pytest
 
+from py1pass import accounts as accnts
 from py1pass import errors
 from py1pass.config import OPConfig
-from py1pass.config import accounts as accnts
 from py1pass.tests import DisabledOPCLI, FakeCLI, OPConfigHelper
 
 locals().update(

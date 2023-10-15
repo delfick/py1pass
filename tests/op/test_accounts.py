@@ -1,4 +1,4 @@
-from py1pass.config import accounts as accnts
+from py1pass import accounts as accnts
 from py1pass.tests import FakeCLI
 
 locals().update(FakeCLI.make_fixture(name="fakecli"))

@@ -7,12 +7,13 @@ import strcs
 from attrs import define, field
 from sh import Command, RunningCommand
 
+from py1pass.accounts import Account, AccountUUID
+
+from ..data import Data, Item, VaultID, data_strcs_register
 from ..errors import No1PasswordCLI
 
-if tp.TYPE_CHECKING:
-    from py1pass.config.accounts import Account
-
 T = tp.TypeVar("T")
+D = tp.TypeVar("D", bound=Data)
 
 op_strcs_register = strcs.CreateRegister()
 op_strcs_creator = op_strcs_register.make_decorator()
@@ -48,17 +49,27 @@ class OPCLI:
             raise RuntimeError("This OPCLI is disabled")
         return self._sh
 
-    def accounts(self) -> list["Account"]:
-        from py1pass.config.accounts import Account
-
+    def accounts(self) -> list[Account]:
         return self._load(list[Account], self.sh.accounts.list(format="json", no_color=True))
 
-    def _load(self, typ: type[T], output: RunningCommand) -> T:
+    def get_item(self, typ: type[Item[D]], item: str, vault: VaultID, account: AccountUUID):
+        return self._load(
+            typ,
+            self.sh.item.get(item, vault=vault, account=account, format="json", no_color=True),
+            register=data_strcs_register,
+        )
+
+    def _load(
+        self,
+        typ: type[T],
+        output: RunningCommand,
+        register: strcs.CreateRegister = op_strcs_register,
+    ) -> T:
         out = str(output).strip()
         if not out:
             dflt: object = {}
             if isinstance(typ, list):
                 dflt = []
-            return op_strcs_register.create(typ, dflt)
+            return register.create(typ, dflt)
         else:
-            return op_strcs_register.create(typ, json.loads(out))
+            return register.create(typ, json.loads(out))

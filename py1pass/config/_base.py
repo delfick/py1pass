@@ -6,9 +6,10 @@ from pathlib import Path
 
 from attrs import define
 
+from py1pass import accounts as accnts
+
 from ..errors import ConfigNotFound, InvalidConfigType, NoAccountFound
 from ..op import OPCLI
-from . import accounts as accnts
 from ._register import config_strcs_register
 
 

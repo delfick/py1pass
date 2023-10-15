@@ -47,5 +47,14 @@ class No1PasswordCLI(Exception):
         return "Can't find the 1password-cli app on your command line, please install that first"
 
 
+@define
+class UnregisteredCategory(Exception):
+    want: str
+    available: list[str]
+
+    def __str__(self) -> str:
+        return f"Unknown category {self.want} requested, available: {self.available}"
+
+
 del define
 del Path
