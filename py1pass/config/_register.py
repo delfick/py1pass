@@ -7,7 +7,7 @@ config_strcs_creator = config_strcs_register.make_decorator()
 
 
 @config_strcs_creator(Path)
-def convert_path(item: object) -> None | Path:
+def convert_path(item: object, /) -> None | Path:
     if isinstance(item, (str, Path)):
         return Path(item)
 

@@ -9,7 +9,7 @@ readme = "README.rst"
 license = ""
 dependencies = [
     "sh==1.14.3",
-    "strcs==0.2.0",
+    "strcs==0.4.0",
     "typer==0.7.0",
 ]
 
